@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Cinemark Mendoza</title>
+  <style>
+    body {
+      background-color: black;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+    button {
+      background-color: red;
+      color: white;
+      border: 2px solid white;
+      padding: 10px;
+      margin: 5px;
+      cursor: pointer;
+    }
+    input, select {
+      margin: 5px;
+      padding: 5px;
+    }
+    table {
+      width: 90%;
+      margin: auto;
+      border-collapse: collapse;
+      background-color: #222;
+    }
+    th, td {
+      border: 1px solid white;
+      padding: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>CINEMARK MENDOZA - GUTIERREZ</h1>
+
+<!-- Películas -->
+<section id="peliculas-seccion">
+  <h2>Estás comprando entradas para:</h2>
+  <div style="display: inline-block; background-color: #111; padding: 15px; border: 2px solid red; border-radius: 10px;">
+    <img src="https://upload.wikimedia.org/wikipedia/en/0/0d/Avengers_Endgame_poster.jpg" alt="Avengers: Endgame" style="width: 250px; border-radius: 5px;"><br>
+    <h3 style="color: red; font-size: 24px; margin-top: 10px;">Avengers: Endgame</h3>
+  </div>
+  <div style="margin-top: 20px;">
+    <button onclick="mostrarCompra()">Comprar Entrada</button>
+    <button onclick="mostrarVentas()">Ver Ventas</button>
+  </div>
+</section>
+
+  <!-- Compra -->
+  <section id="compra-seccion" style="display:none;">
+    <h2>Comprar Entradas</h2>
+    <div>
+      <input id="cliente-nombre" placeholder="Nombre del cliente" />
+      <input id="cliente-email" placeholder="Email del cliente" />
+      <button onclick="registrarCliente()">Cargar Cliente</button>
+    </div>
+    <div>
+      <h3>Elegí Sala</h3>
+      <label><input name="sala" type="radio" value="COMUN">Sala Común - $6000</label>
+      <label><input name="sala" type="radio" value="VIP">Sala VIP - $8500</label>
+    </div>
+    <div>
+      <h3>Horarios</h3>
+      <label><input name="horario" type="radio" value="15:30">15:30</label>
+      <label><input name="horario" type="radio" value="17:00">17:00</label>
+      <label><input name="horario" type="radio" value="19:30">19:30</label>
+    </div>
+    <div>
+      <h3>Asiento</h3>
+      <select id="asiento-select">
+        <option value="A5">A5</option>
+        <option value="D7">D7</option>
+        <option value="E3">E3</option>
+      </select>
+    </div>
+    <button onclick="finalizarCompra()">Finalizar Compra</button>
+    <button onclick="mostrarPeliculas()">Volver a Películas</button>
+  </section>
+
+  <!-- Ventas -->
+  <section id="ventas-seccion" style="display:none;">
+    <h2>Ventas Recientes</h2>
+    <table id="tabla-ventas">
+      <thead>
+        <tr>
+          <th>ID</th><th>Fecha</th><th>Cliente</th><th>Email</th><th>Pelicula</th><th>Genero</th><th>Horario</th><th>Asiento</th><th>Precio</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <button onclick="mostrarPeliculas()">Volver al Menú</button>
+  </section>
+
+  <script>
+    const apiBase = "http://localhost:9000/api";
+    let clienteActual = null;
+
+    async function cargarPeliculas() {
+      const res = await fetch(`${apiBase}/peliculas`);
+      const peliculas = await res.json();
+      const contenedor = document.getElementById("peliculas-list");
+      contenedor.innerHTML = "";
+      peliculas.forEach(p => {
+        const div = document.createElement("div");
+        div.innerHTML = `<strong>${p.titulo}</strong> - ${p.genero}`;
+        contenedor.appendChild(div);
+      });
+    }
+
+    function mostrarPeliculas() {
+      document.getElementById("peliculas-seccion").style.display = "block";
+      document.getElementById("compra-seccion").style.display = "none";
+      document.getElementById("ventas-seccion").style.display = "none";
+      cargarPeliculas();
+    }
+
+    function mostrarCompra() {
+      document.getElementById("peliculas-seccion").style.display = "none";
+      document.getElementById("compra-seccion").style.display = "block";
+    }
+
+    function mostrarVentas() {
+      document.getElementById("peliculas-seccion").style.display = "none";
+      document.getElementById("ventas-seccion").style.display = "block";
+      cargarVentas();
+    }
+
+    async function registrarCliente() {
+      const nombre = document.getElementById("cliente-nombre").value;
+      const email = document.getElementById("cliente-email").value;
+
+      const cliente = { nombre, email, cine: { id: 1 } };
+
+      const res = await fetch(`${apiBase}/clientes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cliente)
+      });
+
+      clienteActual = await res.json();
+      alert("Cliente cargado correctamente");
+    }
+
+    async function finalizarCompra() {
+      if (!clienteActual) {
+        alert("Primero cargá el cliente.");
+        return;
+      }
+
+      const salaTipo = document.querySelector('input[name="sala"]:checked')?.value;
+      const horarioElegido = document.querySelector('input[name="horario"]:checked')?.value;
+      const asiento = document.getElementById("asiento-select").value;
+      const precio = salaTipo === "VIP" ? 8500 : 6000;
+
+      const funcionId = 1; // Función existente (cargada en la base)
+
+      const entrada = {
+        precio: precio,
+        asiento: asiento,
+        funcion: { id: funcionId }
+      };
+
+      const venta = {
+        fecha: new Date().toISOString().split('T')[0],
+        cliente: { id: clienteActual.id },
+        cine: { id: 1 },
+        funciones: [{ id: funcionId }]
+      };
+
+      await fetch(`${apiBase}/entradas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(entrada)
+      });
+
+      await fetch(`${apiBase}/ventas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(venta)
+      });
+
+      alert("¡Compra realizada con éxito!");
+      mostrarPeliculas();
+    }
+
+    async function cargarVentas() {
+  const res = await fetch(`${apiBase}/ventas/resumen`);
+  const ventas = await res.json();
+  const cuerpo = document.querySelector("#tabla-ventas tbody");
+  cuerpo.innerHTML = "";
+
+  ventas.forEach(v => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${v.id}</td>
+      <td>${v.fecha}</td>
+      <td>${v.clienteNombre}</td>
+      <td>${v.clienteEmail}</td>
+      <td>${v.peliculaTitulo}</td>
+      <td>${v.peliculaGenero}</td>
+      <td>${v.horario}</td>
+      <td>-</td>
+      <td>-</td>
+    `;
+    cuerpo.appendChild(tr);
+  });
+}
+
+
+    mostrarPeliculas();
+  </script>
+</body>
+</html>
